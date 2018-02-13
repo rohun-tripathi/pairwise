@@ -1,6 +1,11 @@
-# stub
-def check_accuracy(output, label):
-    return -1
+import torch
+
+
+# Expects labels to be a list of integers
+def check_accuracy(output, labels):
+    batch_size = len(labels)
+    _, pred = torch.max(output, 1)
+    return (pred == labels).sum() / float(batch_size)
 
 
 class AverageMeter(object):

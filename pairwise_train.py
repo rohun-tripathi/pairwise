@@ -34,7 +34,7 @@ def train(train_loader, model, criterion, optimizer, epoch):
         optimizer.step()
 
 
-def validate(test_loader, model):
+def evaluate(test_loader, model):
     model.eval()
     accuracy_meter = AverageMeter()
     for index, data in enumerate(test_loader):
@@ -48,9 +48,10 @@ def validate(test_loader, model):
         accuracy_meter.update(accuracy)
 
     model.train()
+    return accuracy_meter.avg
 
 
-# TODO - presently we have no annealing.
+# Presently we have no annealing.
 def adjust_learning_rate(optimizer, epoch):
     ...
 
@@ -94,10 +95,8 @@ for epoch in range(number_of_epochs):
         # train for one epoch
         train(train_loader, model, criterion, optimizer, epoch)
 
-        # evaluate on validation set
-        prec1 = validate(test_loader, model)
+        prec1 = evaluate(test_loader, model)
 
-        # remember best prec@1 and save checkpoint
         is_best = prec1 > best_prec1
         best_prec1 = max(prec1, best_prec1)
 
