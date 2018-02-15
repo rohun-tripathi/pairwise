@@ -68,8 +68,8 @@ wt_decay = 0.002
 number_of_epochs = 15
 
 
-# Standard ImageNet normalization.
 resize_transform = transforms.Scale((150, 150))
+# Standard ImageNet normalization - required as we use pretrained ResNet on ImageNet.
 sim_transforms = transforms.Compose([
     transforms.ToTensor(),
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
@@ -92,7 +92,6 @@ optimizer = torch.optim.Adam(model.parameters(), lr, weight_decay=wt_decay)
 for epoch in range(number_of_epochs):
         adjust_learning_rate(optimizer, epoch)
 
-        # train for one epoch
         train(train_loader, model, criterion, optimizer, epoch)
 
         prec1 = evaluate(test_loader, model)

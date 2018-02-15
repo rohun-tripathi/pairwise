@@ -4,7 +4,7 @@ import os, json
 from PIL import Image
 import numpy as np
 
-label_map = {'1': [1, 0, 0], '2': [0, 1, 0], 'E': [0, 0, 1]}
+label_map = {'1': 0, '2': 1, 'E': 2}
 
 # Paper uses image width as 63x63
 crop_width = 31
