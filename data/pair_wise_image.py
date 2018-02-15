@@ -30,7 +30,7 @@ class IIWDataset(data.Dataset):
         for judgement_file in judgements:
             # check if the image_id in data set split.
             image_id = judgement_file.rstrip(".json")
-            if image_id not in split_list:
+            if int(image_id) not in split_list:
                 continue
 
             # check if the image file exists
@@ -79,7 +79,7 @@ class IIWDataset(data.Dataset):
         crop[0:left_bottom[0] - left_top[0] + 1, 0:right_top[1] - left_top[1] + 1] = \
             image[left_top[0]:left_bottom[0] + 1, left_top[1]:right_top[1] + 1]
 
-        # Here I assume that the image was in the correct PIL format (0-255 or 0-1) and the normalization is cool
+        # Here I assume that the image was in the correct PIL format (0-255 or 0-1) and normalization will be done next
         point_img = Image.fromarray(crop)
         return point_img
 
