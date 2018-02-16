@@ -21,7 +21,10 @@ def train(train_loader, model, criterion, optimizer, epoch):
     for index, data in enumerate(train_loader):
         image, point_1_img, point_2_img, label, _ = data
         image, point_1_img, point_2_img, label = \
-            Variable(image).cuda(), Variable(point_1_img).cuda(), Variable(point_2_img).cuda(), Variable(label).cuda()
+            Variable(image), Variable(point_1_img), Variable(point_2_img), Variable(label)
+
+        if torch.cuda.is_available():
+            image, point_1_img, point_2_img, label = image.cuda(), point_1_img.cuda(), point_2_img.cuda(), label.cuda()
 
         output = model(image, point_1_img, point_2_img)
 
@@ -40,7 +43,10 @@ def evaluate(test_loader, model):
     for index, data in enumerate(test_loader):
         image, point_1_img, point_2_img, label, weight = data
         image, point_1_img, point_2_img, label = \
-            Variable(image).cuda(), Variable(point_1_img).cuda(), Variable(point_2_img).cuda(), Variable(label)
+            Variable(image), Variable(point_1_img), Variable(point_2_img), Variable(label)
+
+        if torch.cuda.is_available():
+            image, point_1_img, point_2_img = image.cuda(), point_1_img.cuda(), point_2_img.cuda()
 
         output = model(image, point_1_img, point_2_img).cpu()
 
@@ -58,10 +64,10 @@ def adjust_learning_rate(optimizer, epoch):
     ...
 
 
-def save_checkpoint(state, is_best, filename='checkpoint.pth.tar'):
+def save_checkpoint(state, is_best, filename='trained_models/checkpoint.pth.tar'):
     torch.save(state, filename)
     if is_best:
-        shutil.copyfile(filename, 'model_best.pth.tar')
+        shutil.copyfile(filename, 'trained_models/model_best.pth.tar')
 
 
 # Paper defined values
@@ -82,14 +88,15 @@ train_loader = DataLoader(train_data_set, batch_size=128)
 test_data_set = IIWDataset(mode='test', transforms=sim_transforms, resize_transform=resize_transform)
 test_loader = DataLoader(test_data_set, batch_size=128)
 
-model = multi_stream_model.MultiStreamNet().cuda()
-model = torch.nn.parallel.DataParallel(model)
-
-# 3 label CrossEntropyLoss
-criterion = torch.nn.CrossEntropyLoss().cuda()
+if torch.cuda.is_available():
+    model = multi_stream_model.MultiStreamNet().cuda()
+    model = torch.nn.parallel.DataParallel(model)
+    criterion = torch.nn.CrossEntropyLoss().cuda()
+else:
+    model = multi_stream_model.MultiStreamNet()
+    criterion = torch.nn.CrossEntropyLoss()
 
 optimizer = torch.optim.Adam(model.parameters(), lr, weight_decay=wt_decay)
-
 
 for epoch in range(number_of_epochs):
         adjust_learning_rate(optimizer, epoch)
