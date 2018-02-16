@@ -2,9 +2,10 @@ from torch import nn
 from torchvision.models import resnet50
 import torch
 
+
 class MultiStreamNet(nn.Module):
     def __init__(self):
-        super.__init__()
+        super().__init__()
 
         resnet = resnet50(pretrained=True)
         layer0 = nn.Sequential(resnet.conv1, resnet.bn1, resnet.relu, resnet.maxpool)

@@ -22,7 +22,7 @@ class IIWDataset(data.Dataset):
     def make_data_set(mode='train'):
         data_items = []
 
-        split_list = np.load(open(SPLIT_PATH + 'iiw_' + mode + '_ids.npy', "rb"))
+        split_list = np.load(open(os.path.join(SPLIT_PATH, 'iiw_' + mode + '_ids.npy'), "rb"))
 
         images = set(filter(lambda x: ".png" in x, os.listdir(DATA_PATH)))
         judgements = filter(lambda x: ".json" in x, os.listdir(DATA_PATH))
@@ -66,22 +66,23 @@ class IIWDataset(data.Dataset):
 
     @staticmethod
     def get_cropped_region(image, point):
-        rows, cols = image.shape[0:2]
+        rows, cols = image.size
         x, y = int(point['y'] * rows), int(point['x'] * cols)
+        old_im = image.crop((x - crop_width, y - crop_width, x + crop_width + 1, y + crop_width + 1))
 
-        crop = np.zeros((crop_width * 2 + 1, crop_width * 2 + 1))
+        # If we want cropped image in the corner in the center
+        # left_top = max(0, x - crop_width), max(0, y - crop_width)
+        # right_bottom = min(rows, x + crop_width), min(cols, y + crop_width)
+        # old_im = image.crop((left_top[0], left_top[1], right_bottom[0] + 1, right_bottom[1] + 1))
+        # old_size = old_im.size
+        #
+        # if old_size[0] < crop_width * 2 + 1 or old_size[1] < crop_width * 2 + 1:
+        #     new_im = Image.new("RGB", (63, 63))  ## luckily, this is already black!
+        #     new_im.paste(old_im, (int((new_size[0] - old_size[0]) / 2), int((new_size[1] - old_size[1]) / 2)))
+        # else:
+        #     new_im = old_im
 
-        left_top = max(0, x - crop_width), max(0, y - crop_width)
-        left_bottom = min(rows, x + crop_width), max(0, y - crop_width)
-        right_top = max(0, x - crop_width), min(rows, y + crop_width)
-
-        # In case of the corners, the image will always be top left aligned.
-        crop[0:left_bottom[0] - left_top[0] + 1, 0:right_top[1] - left_top[1] + 1] = \
-            image[left_top[0]:left_bottom[0] + 1, left_top[1]:right_top[1] + 1]
-
-        # Here I assume that the image was in the correct PIL format (0-255 or 0-1) and normalization will be done next
-        point_img = Image.fromarray(crop)
-        return point_img
+        return old_im
 
     def __getitem__(self, index):
         image_path, point1, point2, label = self.data_items[index]
