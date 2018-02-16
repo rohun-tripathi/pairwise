@@ -5,7 +5,7 @@ import torch
 def check_accuracy(output, labels):
     batch_size = len(labels)
     _, pred = torch.max(output, 1)
-    return (pred == labels).sum() / float(batch_size)
+    return float((pred == labels).sum().data.numpy()[0]) / batch_size
 
 
 class AverageMeter(object):

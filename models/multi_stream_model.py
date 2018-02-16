@@ -31,8 +31,6 @@ class MultiStreamNet(nn.Module):
     def forward(self, *input):
         image, point_1_img, point_2_img = input
 
-        initial_shape = image.shape
-
         # Have to figure out the image size here.
         image = self.resnet_layers(image)
         image = self.post_resnet_layer(image)
@@ -41,8 +39,7 @@ class MultiStreamNet(nn.Module):
         point_2_img = self.point_net(point_2_img)
 
         image = torch.cat((image, point_1_img, point_2_img), 1)
-
-        image.view(initial_shape[0], -1)
+        image = image.view(image.size(0), -1)
 
         labels = self.fcn_layers(image)
 
