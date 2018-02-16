@@ -5,7 +5,7 @@ import torch
 import torchvision.transforms as transforms
 import shutil
 
-from util.function_library import AverageMeter, check_accuracy
+from util.function_library import AverageMeter, check_accuracy, check_whdr
 
 from data.pair_wise_image import IIWDataset
 
@@ -19,9 +19,9 @@ def train(train_loader, model, criterion, optimizer, epoch):
     model.train()
 
     for index, data in enumerate(train_loader):
-        image, point_1_img, point_2_img, label = data
+        image, point_1_img, point_2_img, label, _ = data
         image, point_1_img, point_2_img, label = \
-            Variable(image), Variable(point_1_img), Variable(point_2_img), Variable(label)
+            Variable(image).cuda(), Variable(point_1_img).cuda(), Variable(point_2_img).cuda(), Variable(label).cuda()
 
         output = model(image, point_1_img, point_2_img)
 
@@ -36,19 +36,21 @@ def train(train_loader, model, criterion, optimizer, epoch):
 
 def evaluate(test_loader, model):
     model.eval()
-    accuracy_meter = AverageMeter()
+    accuracy_meter, whdr_meter = AverageMeter(), AverageMeter()
     for index, data in enumerate(test_loader):
-        image, point_1_img, point_2_img, label = data
+        image, point_1_img, point_2_img, label, weight = data
         image, point_1_img, point_2_img, label = \
-            Variable(image), Variable(point_1_img), Variable(point_2_img), Variable(label)
+            Variable(image).cuda(), Variable(point_1_img).cuda(), Variable(point_2_img).cuda(), Variable(label)
 
-        output = model(image, point_1_img, point_2_img)
+        output = model(image, point_1_img, point_2_img).cpu()
 
         accuracy = check_accuracy(output, label)
+        whdr_score = check_whdr(output, label, weight)
+        whdr_meter.update(whdr_score)
         accuracy_meter.update(accuracy)
 
     model.train()
-    return accuracy_meter.avg
+    return accuracy_meter.avg, whdr_meter.avg
 
 
 # Presently we have no annealing.
@@ -94,10 +96,10 @@ for epoch in range(number_of_epochs):
 
         train(train_loader, model, criterion, optimizer, epoch)
 
-        prec1 = evaluate(test_loader, model)
+        accuracy, weighted_accuracy = evaluate(test_loader, model)
 
-        is_best = prec1 > best_prec1
-        best_prec1 = max(prec1, best_prec1)
+        is_best = accuracy > best_prec1
+        best_prec1 = max(accuracy, best_prec1)
 
         save_checkpoint({
             'epoch': epoch + 1,

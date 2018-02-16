@@ -59,7 +59,7 @@ class IIWDataset(data.Dataset):
                     continue
 
                 # Add all the items for this iteration
-                data_items.append([os.path.join(DATA_PATH, image_for_judgement), point1, point2, label_map[darker]])
+                data_items.append([os.path.join(DATA_PATH, image_for_judgement), point1, point2, label_map[darker], weight])
 
         print("Dataset Debug. Mode - ", mode, "items length - ", len(data_items))
         return data_items
@@ -85,7 +85,7 @@ class IIWDataset(data.Dataset):
         return old_im
 
     def __getitem__(self, index):
-        image_path, point1, point2, label = self.data_items[index]
+        image_path, point1, point2, label, weight = self.data_items[index]
         image = Image.open(image_path)
 
         point_1_img, point_2_img = self.get_cropped_region(image, point1), self.get_cropped_region(image, point2)
@@ -98,7 +98,7 @@ class IIWDataset(data.Dataset):
             point_1_img = self.transforms(point_1_img)
             point_2_img = self.transforms(point_2_img)
 
-        return image, point_1_img, point_2_img, label
+        return image, point_1_img, point_2_img, label, weight
 
     def __len__(self):
         return len(self.data_items)

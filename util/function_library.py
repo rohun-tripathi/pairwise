@@ -1,11 +1,22 @@
 import torch
 
 
-# Expects labels to be a list of integers
 def check_accuracy(output, labels):
     batch_size = len(labels)
     _, pred = torch.max(output, 1)
     return float((pred == labels).sum().data.numpy()[0]) / batch_size
+
+
+def check_whdr(output, labels, weights):
+    _, pred = torch.max(output, 1)
+
+    error_weight, total_weight = 0, 0
+    for each_pred, each_label, each_weight in zip(pred.data.numpy(), labels.data.numpy(), weights):
+        if each_pred != each_label:
+            error_weight += each_weight
+        total_weight += each_weight
+
+    return error_weight/total_weight
 
 
 class AverageMeter(object):
