@@ -9,16 +9,27 @@ from util.function_library import AverageMeter, check_accuracy, check_whdr
 
 from data.pair_wise_image import IIWDataset
 
+import logging
+
+import datetime
+
+exp_name = "128_on_two_GPUS"
+filename = 'logs/' + exp_name + '_experiment-{date:%d_%m_%H_%M_%S}.log'.format(date=datetime.datetime.now())
+logging.basicConfig(filename=filename, level=logging.INFO)
+
 # set cudnn to true.
 # torch.backends.cudnn.enabled=True
 
 
 def train(train_loader, model, criterion, optimizer, epoch):
-    print("Start epoch number - ", epoch)
-
     model.train()
 
+    number_of_batches = len(train_loader)
     for index, data in enumerate(train_loader):
+
+        if index % 1000 == 0:
+            print('Training epoch number - ', index, number_of_batches)
+
         image, point_1_img, point_2_img, label, _ = data
         image, point_1_img, point_2_img, label = \
             Variable(image), Variable(point_1_img), Variable(point_2_img), Variable(label)
@@ -39,11 +50,17 @@ def train(train_loader, model, criterion, optimizer, epoch):
 
 def evaluate(test_loader, model):
     model.eval()
-    accuracy_meter, whdr_meter = AverageMeter(), AverageMeter()
+    accuracy_meter, whdr_err_meter = AverageMeter(), AverageMeter()
+    number_of_batches = len(train_loader)
+
     for index, data in enumerate(test_loader):
+        if index % 1000 == 0:
+            print("Eval", "batch_number", index, "total", number_of_batches)
+
         image, point_1_img, point_2_img, label, weight = data
         image, point_1_img, point_2_img, label = \
-            Variable(image), Variable(point_1_img), Variable(point_2_img), Variable(label)
+            Variable(image, volatile=True), Variable(point_1_img, volatile=True), Variable(point_2_img, volatile=True),\
+            Variable(label, volatile=True)
 
         if torch.cuda.is_available():
             image, point_1_img, point_2_img = image.cuda(), point_1_img.cuda(), point_2_img.cuda()
@@ -51,12 +68,12 @@ def evaluate(test_loader, model):
         output = model(image, point_1_img, point_2_img).cpu()
 
         accuracy = check_accuracy(output, label)
-        whdr_score = check_whdr(output, label, weight)
-        whdr_meter.update(whdr_score)
+        whdr_error = check_whdr(output, label, weight)
+        whdr_err_meter.update(whdr_error)
         accuracy_meter.update(accuracy)
 
     model.train()
-    return accuracy_meter.avg, whdr_meter.avg
+    return accuracy_meter.avg, whdr_err_meter.avg
 
 
 # Presently we have no annealing.
@@ -83,10 +100,10 @@ sim_transforms = transforms.Compose([
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
 
 train_data_set = IIWDataset(mode='train', transforms=sim_transforms, resize_transform=resize_transform)
-train_loader = DataLoader(train_data_set, batch_size=128)
+train_loader = DataLoader(train_data_set, batch_size=256, num_workers=8)
 
 test_data_set = IIWDataset(mode='test', transforms=sim_transforms, resize_transform=resize_transform)
-test_loader = DataLoader(test_data_set, batch_size=128)
+test_loader = DataLoader(test_data_set, batch_size=512, num_workers=8)
 
 if torch.cuda.is_available():
     model = multi_stream_model.MultiStreamNet().cuda()
@@ -98,12 +115,17 @@ else:
 
 optimizer = torch.optim.Adam(model.parameters(), lr, weight_decay=wt_decay)
 
+best_prec1 = -1.0
 for epoch in range(number_of_epochs):
         adjust_learning_rate(optimizer, epoch)
 
         train(train_loader, model, criterion, optimizer, epoch)
 
-        accuracy, weighted_accuracy = evaluate(test_loader, model)
+        accuracy, weighted_err = evaluate(test_loader, model)
+
+        result = "_".join(["Epoch", str(epoch), "val_accuracy", str(accuracy), "val_weighted_error", str(weighted_err)])
+        logging.info(result)
+        print(result)
 
         is_best = accuracy > best_prec1
         best_prec1 = max(accuracy, best_prec1)
