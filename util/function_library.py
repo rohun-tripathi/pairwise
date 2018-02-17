@@ -4,7 +4,7 @@ import torch
 def check_accuracy(output, labels):
     batch_size = len(labels)
     _, pred = torch.max(output, 1)
-    return float((pred == labels).sum().data.numpy()[0]) / batch_size
+    return float((pred == labels).sum().data.cpu().numpy()[0]) / batch_size
 
 
 def check_whdr(output, labels, weights):

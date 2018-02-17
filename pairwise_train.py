@@ -23,12 +23,13 @@ logging.basicConfig(filename=filename, level=logging.INFO)
 
 def train(train_loader, model, criterion, optimizer, epoch):
     model.train()
-
+    accuracy_meter = AverageMeter()
     number_of_batches = len(train_loader)
     for index, data in enumerate(train_loader):
 
         if index % 1000 == 0:
-            print('Training epoch number - ', index, number_of_batches)
+            print('Training epoch number- ', epoch, index, number_of_batches)
+            print("_".join(["Epoch", str(epoch), "train_accuracy", str(accuracy_meter.avg)]))
 
         image, point_1_img, point_2_img, label, _ = data
         image, point_1_img, point_2_img, label = \
@@ -41,7 +42,8 @@ def train(train_loader, model, criterion, optimizer, epoch):
 
         loss = criterion(output, label)
 
-        # accuracy = check_accuracy(output, label)
+        accuracy = check_accuracy(output, label)
+        accuracy_meter.update(accuracy)
 
         optimizer.zero_grad()
         loss.backward()
@@ -51,7 +53,7 @@ def train(train_loader, model, criterion, optimizer, epoch):
 def evaluate(test_loader, model):
     model.eval()
     accuracy_meter, whdr_err_meter = AverageMeter(), AverageMeter()
-    number_of_batches = len(train_loader)
+    number_of_batches = len(test_loader)
 
     for index, data in enumerate(test_loader):
         if index % 1000 == 0:
@@ -105,15 +107,16 @@ train_loader = DataLoader(train_data_set, batch_size=256, num_workers=8)
 test_data_set = IIWDataset(mode='test', transforms=sim_transforms, resize_transform=resize_transform)
 test_loader = DataLoader(test_data_set, batch_size=512, num_workers=8)
 
-if torch.cuda.is_available():
-    model = multi_stream_model.MultiStreamNet().cuda()
-    model = torch.nn.parallel.DataParallel(model)
-    criterion = torch.nn.CrossEntropyLoss().cuda()
-else:
-    model = multi_stream_model.MultiStreamNet()
-    criterion = torch.nn.CrossEntropyLoss()
+model = multi_stream_model.MultiStreamNet()
+criterion = torch.nn.CrossEntropyLoss()
+optimizer = torch.optim.SGD(model.parameters(), lr)
 
-optimizer = torch.optim.Adam(model.parameters(), lr, weight_decay=wt_decay)
+# Paper params
+# optimizer = torch.optim.Adam(model.parameters(), lr, weight_decay=wt_decay)
+
+if torch.cuda.is_available():
+    model = torch.nn.parallel.DataParallel(model).cuda()
+    criterion = criterion.cuda()
 
 best_prec1 = -1.0
 for epoch in range(number_of_epochs):
