@@ -66,7 +66,7 @@ def evaluate(test_loader, model):
     number_of_batches = len(test_loader)
 
     for index, data in enumerate(test_loader):
-        if index % 1 == 0:
+        if index % 1000 == 0:
             print_and_log("Eval", "batch_number", index, "total", number_of_batches)
 
         image, point_1_img, point_2_img, label, weight = data
@@ -102,8 +102,8 @@ def save_checkpoint(state, is_best, filename='trained_models/checkpoint.pth.tar'
 # Paper defined values
 lr = 1e-3
 wt_decay = 0.002
-max_steps = 20000
-train_batch_size=128
+max_steps = 50000
+train_batch_size = 512
 
 
 resize_transform = transforms.Scale((150, 150))
@@ -116,7 +116,7 @@ train_data_set = IIWDataset(mode='train', transforms=sim_transforms, resize_tran
 train_loader = DataLoader(train_data_set, batch_size=train_batch_size, num_workers=8, shuffle=True)
 
 test_data_set = IIWDataset(mode='test', transforms=sim_transforms, resize_transform=resize_transform)
-test_loader = DataLoader(test_data_set, batch_size=512, num_workers=8)
+test_loader = DataLoader(test_data_set, batch_size=1024, num_workers=8)
 
 model = multi_stream_model.MultiStreamNet()
 criterion = torch.nn.CrossEntropyLoss()
