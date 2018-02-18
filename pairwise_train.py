@@ -27,7 +27,7 @@ def train(train_loader, model, criterion, optimizer, epoch):
     number_of_batches = len(train_loader)
     for index, data in enumerate(train_loader):
 
-        if index % 1000 == 0:
+        if index % 10 == 0:
             print('Training epoch number- ', epoch, index, number_of_batches)
             print("_".join(["Epoch", str(epoch), "train_accuracy", str(accuracy_meter.avg)]))
 
@@ -48,6 +48,8 @@ def train(train_loader, model, criterion, optimizer, epoch):
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
+
+    print("_".join(["Epoch", str(epoch), "train_accuracy", str(accuracy_meter.avg)]))
 
 
 def evaluate(test_loader, model):
@@ -70,8 +72,8 @@ def evaluate(test_loader, model):
         output = model(image, point_1_img, point_2_img).cpu()
 
         accuracy = check_accuracy(output, label)
-        whdr_error = check_whdr(output, label, weight)
-        whdr_err_meter.update(whdr_error)
+        # whdr_error = check_whdr(output, label, weight)
+        # whdr_err_meter.update(whdr_error)
         accuracy_meter.update(accuracy)
 
     model.train()
@@ -102,21 +104,20 @@ sim_transforms = transforms.Compose([
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
 
 train_data_set = IIWDataset(mode='train', transforms=sim_transforms, resize_transform=resize_transform)
-train_loader = DataLoader(train_data_set, batch_size=256, num_workers=8)
+train_loader = DataLoader(train_data_set, batch_size=64, num_workers=8)
 
 test_data_set = IIWDataset(mode='test', transforms=sim_transforms, resize_transform=resize_transform)
 test_loader = DataLoader(test_data_set, batch_size=512, num_workers=8)
 
 model = multi_stream_model.MultiStreamNet()
-criterion = torch.nn.CrossEntropyLoss()
-optimizer = torch.optim.SGD(model.parameters(), lr)
 
-# Paper params
-# optimizer = torch.optim.Adam(model.parameters(), lr, weight_decay=wt_decay)
+criterion = torch.nn.CrossEntropyLoss()
 
 if torch.cuda.is_available():
     model = torch.nn.parallel.DataParallel(model).cuda()
     criterion = criterion.cuda()
+
+optimizer = torch.optim.Adagrad(model.parameters(), lr)
 
 best_prec1 = -1.0
 for epoch in range(number_of_epochs):

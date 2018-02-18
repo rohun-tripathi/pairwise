@@ -24,6 +24,8 @@ class IIWDataset(data.Dataset):
 
         split_list = np.load(open(os.path.join(SPLIT_PATH, 'iiw_' + mode + '_ids.npy'), "rb"))
 
+        split_list = split_list[:50]
+
         images = set(filter(lambda x: ".png" in x, os.listdir(DATA_PATH)))
         judgements = filter(lambda x: ".json" in x, os.listdir(DATA_PATH))
 

@@ -16,7 +16,7 @@ def check_whdr(output, labels, weights):
             error_weight += each_weight
         total_weight += each_weight
 
-    return error_weight/total_weight
+    return (total_weight - error_weight)/total_weight
 
 
 class AverageMeter(object):
