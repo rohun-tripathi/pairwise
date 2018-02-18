@@ -18,23 +18,34 @@ class MultiStreamNet(nn.Module):
         image_output_layers = 64
         self.conv_net = nn.Sequential(
             nn.Conv2d(3, 32, 5, 4),
+            nn.ReLU(),
             nn.Conv2d(32, 32, 5, 4),
+            nn.ReLU(),
             nn.Conv2d(32, 32, 5, 2),
-            nn.Conv2d(32, image_output_layers, 3, 1)
+            nn.ReLU(),
+            nn.Conv2d(32, image_output_layers, 3, 1),
+            nn.ReLU()
         )
 
         point_net_output_channels = 64
         self.point_net = nn.Sequential(
             nn.Conv2d(3, 16, 3, 2),
+            nn.ReLU(),
             nn.Conv2d(16, 32, 3, 2),
+            nn.ReLU(),
             nn.Conv2d(32, 64, 3, 2),
-            nn.Conv2d(64, point_net_output_channels, 7, 1)
+            nn.ReLU(),
+            nn.Conv2d(64, point_net_output_channels, 7, 1),
+            nn.ReLU()
         )
 
         # not sure of the input features
         self.fcn_layers = nn.Sequential(
             nn.Linear(image_output_layers + point_net_output_channels + point_net_output_channels, 128),
+            nn.ReLU(),
             nn.Linear(128, 128),
+            nn.ReLU(),
+            nn.Dropout(p=0.3),
             nn.Linear(128, 3)
         )
 

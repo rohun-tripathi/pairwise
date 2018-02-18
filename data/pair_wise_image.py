@@ -24,8 +24,6 @@ class IIWDataset(data.Dataset):
 
         split_list = np.load(open(os.path.join(SPLIT_PATH, 'iiw_' + mode + '_ids.npy'), "rb"))
 
-        split_list = split_list[:50]
-
         images = set(filter(lambda x: ".png" in x, os.listdir(DATA_PATH)))
         judgements = filter(lambda x: ".json" in x, os.listdir(DATA_PATH))
 
@@ -88,7 +86,7 @@ class IIWDataset(data.Dataset):
 
     def __getitem__(self, index):
         image_path, point1, point2, label, weight = self.data_items[index]
-        image = Image.open(image_path)
+        image = Image.open(image_path).convert('RGB')
 
         point_1_img, point_2_img = self.get_cropped_region(image, point1), self.get_cropped_region(image, point2)
 

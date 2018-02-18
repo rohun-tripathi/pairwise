@@ -21,15 +21,22 @@ logging.basicConfig(filename=filename, level=logging.INFO)
 # torch.backends.cudnn.enabled=True
 
 
+def print_and_log(*inputs):
+    if True:
+        parts = "_".join([str(x) for x in inputs])
+        print(parts)
+        logging.info(parts)
+
+
 def train(train_loader, model, criterion, optimizer, epoch):
     model.train()
     accuracy_meter = AverageMeter()
-    number_of_batches = len(train_loader)
+
+    training_loss = AverageMeter()
     for index, data in enumerate(train_loader):
 
-        if index % 10 == 0:
-            print('Training epoch number- ', epoch, index, number_of_batches)
-            print("_".join(["Epoch", str(epoch), "train_accuracy", str(accuracy_meter.avg)]))
+        if index % 1000 == 0 and index > 0:
+            print_and_log('Training epoch, iter- ', epoch, index, "loss", training_loss.avg)
 
         image, point_1_img, point_2_img, label, _ = data
         image, point_1_img, point_2_img, label = \
@@ -41,6 +48,7 @@ def train(train_loader, model, criterion, optimizer, epoch):
         output = model(image, point_1_img, point_2_img)
 
         loss = criterion(output, label)
+        training_loss.update(loss.data[0], image.size(0))
 
         accuracy = check_accuracy(output, label)
         accuracy_meter.update(accuracy)
@@ -49,7 +57,7 @@ def train(train_loader, model, criterion, optimizer, epoch):
         loss.backward()
         optimizer.step()
 
-    print("_".join(["Epoch", str(epoch), "train_accuracy", str(accuracy_meter.avg)]))
+    print_and_log("Epoch", str(epoch), "train_accuracy", str(accuracy_meter.avg))
 
 
 def evaluate(test_loader, model):
@@ -58,8 +66,8 @@ def evaluate(test_loader, model):
     number_of_batches = len(test_loader)
 
     for index, data in enumerate(test_loader):
-        if index % 1000 == 0:
-            print("Eval", "batch_number", index, "total", number_of_batches)
+        if index % 1 == 0:
+            print_and_log("Eval", "batch_number", index, "total", number_of_batches)
 
         image, point_1_img, point_2_img, label, weight = data
         image, point_1_img, point_2_img, label = \
@@ -81,7 +89,7 @@ def evaluate(test_loader, model):
 
 
 # Presently we have no annealing.
-def adjust_learning_rate(optimizer, epoch):
+def update_learning_rate(optimizer, step_count, max_steps, bs):
     ...
 
 
@@ -94,7 +102,8 @@ def save_checkpoint(state, is_best, filename='trained_models/checkpoint.pth.tar'
 # Paper defined values
 lr = 1e-3
 wt_decay = 0.002
-number_of_epochs = 15
+max_steps = 20000
+train_batch_size=128
 
 
 resize_transform = transforms.Scale((150, 150))
@@ -104,40 +113,52 @@ sim_transforms = transforms.Compose([
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
 
 train_data_set = IIWDataset(mode='train', transforms=sim_transforms, resize_transform=resize_transform)
-train_loader = DataLoader(train_data_set, batch_size=64, num_workers=8)
+train_loader = DataLoader(train_data_set, batch_size=train_batch_size, num_workers=8, shuffle=True)
 
 test_data_set = IIWDataset(mode='test', transforms=sim_transforms, resize_transform=resize_transform)
 test_loader = DataLoader(test_data_set, batch_size=512, num_workers=8)
 
 model = multi_stream_model.MultiStreamNet()
-
 criterion = torch.nn.CrossEntropyLoss()
 
 if torch.cuda.is_available():
     model = torch.nn.parallel.DataParallel(model).cuda()
     criterion = criterion.cuda()
 
-optimizer = torch.optim.Adagrad(model.parameters(), lr)
-
+optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=wt_decay)
 best_prec1 = -1.0
-for epoch in range(number_of_epochs):
-        adjust_learning_rate(optimizer, epoch)
+step_count = 0
+epoch = 0
 
-        train(train_loader, model, criterion, optimizer, epoch)
+load_best = False
+if load_best:
+    checkpoint = torch.load('trained_models/model_best.pth.tar')
+    epoch = checkpoint['epoch']
+    best_prec1 = checkpoint['best_prec1']
+    model.load_state_dict(checkpoint['state_dict'])
+    optimizer.load_state_dict(checkpoint['optimizer'])
+    step_count = checkpoint['epoch'] * train_batch_size
 
-        accuracy, weighted_err = evaluate(test_loader, model)
 
-        result = "_".join(["Epoch", str(epoch), "val_accuracy", str(accuracy), "val_weighted_error", str(weighted_err)])
-        logging.info(result)
-        print(result)
+while step_count < max_steps:
+    update_learning_rate(optimizer, step_count, max_steps, train_batch_size)
 
-        is_best = accuracy > best_prec1
-        best_prec1 = max(accuracy, best_prec1)
+    train(train_loader, model, criterion, optimizer, epoch)
 
-        save_checkpoint({
-            'epoch': epoch + 1,
-            'arch': 'resnet',
-            'state_dict': model.state_dict(),
-            'best_prec1': best_prec1,
-            'optimizer' : optimizer.state_dict(),
-        }, is_best)
+    accuracy, weighted_err = evaluate(test_loader, model)
+
+    print_and_log("Epoch", str(epoch), "val_accuracy", str(accuracy), "val_weighted_error", str(weighted_err))
+
+    is_best = accuracy > best_prec1
+    best_prec1 = max(accuracy, best_prec1)
+
+    save_checkpoint({
+        'epoch': epoch + 1,
+        'arch': 'resnet',
+        'state_dict': model.state_dict(),
+        'best_prec1': best_prec1,
+        'optimizer' : optimizer.state_dict(),
+    }, is_best)
+
+    step_count += len(train_data_set) / train_batch_size
+    epoch += 1
