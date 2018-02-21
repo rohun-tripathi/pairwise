@@ -1,8 +1,7 @@
 import torch
 from torch.autograd import Variable
 
-from pairwise_train import print_and_log
-from util.function_library import AverageMeter, check_accuracy
+from util.function_library import AverageMeter, check_accuracy, print_and_log
 
 import shutil
 

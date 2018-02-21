@@ -1,6 +1,13 @@
 import torch
 
 
+def print_and_log(*inputs):
+    if True:
+        parts = "_".join([str(x) for x in inputs])
+        print(parts)
+        logging.info(parts)
+
+
 def check_accuracy(output, labels):
     batch_size = len(labels)
     _, pred = torch.max(output, 1)

@@ -5,6 +5,8 @@ import torch
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
 
+from util.function_library import print_and_log
+
 import models.multi_stream_model as multi_stream_model
 from data.pair_wise_image import IIWDataset
 from network import train, update_learning_rate, evaluate, save_checkpoint
@@ -15,13 +17,6 @@ logging.basicConfig(filename=filename, level=logging.INFO)
 
 # set cudnn to true.
 # torch.backends.cudnn.enabled=True
-
-
-def print_and_log(*inputs):
-    if True:
-        parts = "_".join([str(x) for x in inputs])
-        print(parts)
-        logging.info(parts)
 
 
 # Paper defined values
